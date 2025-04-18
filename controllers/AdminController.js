@@ -2,8 +2,9 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const Admin = require('../models/adminModel');
 
-// Generate JWT
+// Generate JWT - Fix token generation using correct ID field
 const generateToken = (id) => {
+  console.log('Generating token for id:', id); // Debug log
   return jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: '30d'
   });
@@ -13,46 +14,79 @@ const generateToken = (id) => {
 // @route   POST /api/admins/register
 // @access  Public
 const registerAdmin = async (req, res) => {
+  console.log('Registration request:', req.body); // Debug log
+
   const { name, email, password, role } = req.body;
 
-  // Basic validation
-  if (!name || !email || !password) {
-    return res.status(400).json({ message: 'Please provide all required fields' });
-  }
-
   try {
-    const adminExists = await Admin.findOne({ where: { email } });
-
-    if (adminExists) {
-      return res.status(400).json({ message: 'Admin already exists' });
+    // Validation checks
+    if (!name || !email || !password) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Please provide name, email and password' 
+      });
     }
 
+    // Check valid email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid email'
+      });
+    }
+
+    // Check if admin exists
+    const adminExists = await Admin.findOne({ 
+      where: { email: email.toLowerCase() } 
+    });
+
+    if (adminExists) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email already registered'
+      });
+    }
+
+    // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    // Create admin with validated role
+    const validRoles = ['admin', 'finance', 'sales'];
+    const defaultRole = 'admin';
+
     const admin = await Admin.create({
-      name,
-      email,
+      name: name.trim(),
+      email: email.toLowerCase(),
       password_hash: hashedPassword,
-      role: role || 'admin'
+      role: validRoles.includes(role) ? role : defaultRole
     });
 
-    if (admin) {
-      res.status(201).json({
+    console.log('Created admin:', admin.toJSON()); // Debug log
+
+    // Generate token using correct ID field
+    const token = generateToken(admin.admin_id);
+    console.log('Generated token:', token); // Debug log
+
+    // Return success response
+    return res.status(201).json({
+      success: true,
+      data: {
         admin_id: admin.admin_id,
         name: admin.name,
         email: admin.email,
         role: admin.role,
-        token: generateToken(admin.admin_id)
-      });
-    } else {
-      res.status(400).json({ message: 'Invalid admin data' });
-    }
+        token
+      }
+    });
+
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ 
-      message: 'Server Error',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    console.error('Registration error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Registration failed',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Server Error'
     });
   }
 };

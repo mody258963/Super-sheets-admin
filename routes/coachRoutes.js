@@ -10,6 +10,7 @@ const {
 } = require('../controllers/CoachController');
 const { protect, admin } = require('../middleware/authMiddleware');
 
+
 // All routes are protected
 router.route('/')
   .get(protect, admin, getCoaches)

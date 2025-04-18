@@ -10,6 +10,7 @@ const {
 } = require('../controllers/PaymentController');
 const { protect, admin } = require('../middleware/authMiddleware');
 
+
 // All routes are protected
 router.route('/')
   .get(protect, admin, getPayments)

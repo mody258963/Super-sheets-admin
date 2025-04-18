@@ -7,6 +7,7 @@ const {
 } = require('../controllers/DashboardController');
 const { protect, admin } = require('../middleware/authMiddleware');
 
+
 // All routes are protected and admin-only
 router.route('/summary')
   .get(protect, admin, getDashboardSummary);

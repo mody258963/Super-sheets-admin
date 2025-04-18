@@ -9,6 +9,7 @@ const {
 } = require('../controllers/planController');
 const { protect, admin } = require('../middleware/authMiddleware');
 
+
 // Get plans is available to all authenticated users
 router.route('/')
   .get(protect, getPlans)
